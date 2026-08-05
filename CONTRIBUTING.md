@@ -1,42 +1,26 @@
-# Contributing to Omniconvert Job Scraper
+# Contributing
 
 Thank you for your interest in contributing!
 
-## How to Contribute
+## 📐 Derived Scraper
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+This repo is a **derived scraper** for OMNICONVERT SRL, built on the pattern established by the [EPAM nodejs template](https://github.com/sebiboga/epam-systems-international-srl-nodejs-scraper). When the template changes, relevant updates should be applied here — the `automation-template-sync-check.yml` workflow tracks version drift.
+
+For the full derivation playbook, see the template's [AI-DERIVATION-GUIDE.md](https://github.com/sebiboga/epam-systems-international-srl-nodejs-scraper/blob/main/ai/AI-DERIVATION-GUIDE.md).
 
 ## Development Setup
 
 ```bash
-# Clone your fork
-git clone https://github.com/YOUR_USERNAME/omniconvert-srl-nodejs-scraper.git
-
-# Install dependencies
 npm install
-
-# Run tests
 npm test
 ```
 
-## Code Style
-
-- Use ES6+ modules
-- Add tests for new features
-- Ensure all tests pass before submitting PR
-- Update documentation as needed
-
 ## Reporting Issues
 
-Please report issues via GitHub Issues with:
+Open a [GitHub Issue](https://github.com/sebiboga/omniconvert-srl-nodejs-scraper/issues) with:
 - Clear description of the problem
 - Steps to reproduce
 - Expected vs actual behavior
-- Environment details (Node version, OS, etc.)
 
 ## License
 

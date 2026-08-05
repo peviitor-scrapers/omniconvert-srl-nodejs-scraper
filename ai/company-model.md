@@ -12,17 +12,17 @@
 | Field        | Type     | Description |
 |--------------|----------|-------------|
 | brand        | string   | Commercial brand name (e.g. "Omniconvert") |
-| group        | string   | Parent company group (e.g. "Omniconvert Systems") |
+| group        | string   | Parent company group (e.g. "Omniconvert") |
 | status       | string   | "activ", "suspendat", "inactiv", or "radiat" |
 | location     | string[] | Romanian cities/addresses. DIACRITICS ACCEPTED. Multi-valued array |
 | website      | string[] | Official company website. Must be valid HTTP/HTTPS URL |
 | career       | string[] | Official career/jobs page. Must be valid HTTP/HTTPS URL |
 | lastScraped  | string   | Date of last scrape in ISO8601 format |
-| scraperFile  | string   | URL to scraper workflow YML file (github raw URL) |
+| scraperFile  | string   | URL to scraper GitHub Actions workflow (no raw) |
 
 ## Notes
 
 - Fields marked `string[]` are multi-valued arrays stored as arrays in SOLR/OpenSearch
 - Company status "activ" means jobs should be kept, otherwise remove jobs
 - website and career should be canonical URLs without trailing slash
-- **scraperFile**: Full URL to GitHub raw workflow YML (e.g. `https://raw.githubusercontent.com/sebiboga/omniconvert-srl-nodejs-scraper/master/.github/workflows/scrape.yml`)
+- **scraperFile**: Full URL to the GitHub Actions workflow (no raw, e.g. `https://github.com/sebiboga/omniconvert-srl-nodejs-scraper/actions/workflows/job-seeker-ro-spider.yml`)

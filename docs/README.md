@@ -1,8 +1,10 @@
 # job_seeker_ro_spider
 
-**job_seeker_ro_spider** — scraper pentru job-urile Omniconvert SRL din România.
+**job_seeker_ro_spider** — scraper pentru job-urile OMNICONVERT SRL din România.
 
-Extrage anunțurile de pe pagina [Omniconvert About](https://www.omniconvert.com/about/) (Astro site static) și le publică în [peviitor.ro](https://peviitor.ro) prin API-ul SOLR.
+Extrage anunțurile de pe [site-ul Omniconvert](https://www.omniconvert.com/about/) (parsează HTML cu cheerio) și le publică în [peviitor.ro](https://peviitor.ro) prin API-ul Peviitor.
+
+> **🌱 Derived scraper.** Acest repo este derivat din [EPAM nodejs template](https://github.com/sebiboga/epam-systems-international-srl-nodejs-scraper). Alte scraper-e Node.js din ecosistemul peviitor.ro urmează același pattern.
 
 ## Identificare
 
@@ -14,53 +16,27 @@ job_seeker_ro_spider
 
 ## Ce face
 
-1. **Validează compania** — interoghează API-ul public ANAF ([demoanaf.ro](https://demoanaf.ro)) după CIF-ul Omniconvert (31411197) și verifică:
+1. **Validează compania** — interoghează API-ul public ANAF ([demoanaf.ro](https://demoanaf.ro)) după CIF-ul OMNICONVERT (31411197) și verifică:
    - Denumirea oficială: OMNICONVERT SRL
    - Status: activ/inactiv/radiat
    - Adresa completă din registrul comerțului
 2. **Cross-validează cu Peviitor** — verifică existența companiei în API-ul Peviitor
-3. **Scrape-uiește job-urile** — extrage lista completă de job-uri din pagina `/about/` (Astro HTML, parse-uiți cu cheerio)
+3. **Scrape-uiește job-urile** — parsează pagina `/about/` cu cheerio (link-uri `/jobs/*` + date structurate JSON-LD)
 4. **Transformă datele** — normalizează locațiile (doar orașe românești), tag-urile (lowercase), workmode-ul (remote/on-site/hybrid)
-5. **Stochează în SOLR** — upsert în `job` core (job-urile) și `company` core (datele companiei cu adresa completă)
-
-## Structură proiect
-
-```
-├── index.js           # Orchestrator principal
-├── company.js         # Validare companie (ANAF + Peviitor + SOLR)
-├── demoanaf.js        # CLI wrapper pentru src/anaf.js
-├── src/anaf.js        # Modul ANAF API (search + company details)
-├── solr.js            # Operații SOLR (query, upsert, delete, company)
-├── company.json       # Cache companie (fallback când ANAF e down)
-├── ROBOTS.md          # Analiză robots.txt și politici de scraping
-├── tests/
-│   ├── unit/          # 55 teste unitare (API-uri mock-uite)
-│   ├── integration/   # 12 teste de integrare (ANAF + SOLR live)
-│   └── e2e/           # 11 teste end-to-end (pipelin complet)
-└── .github/workflows/
-    ├── scrape.yml     # Rulează zilnic la 6 AM UTC
-    └── test.yml       # Teste automate la fiecare push/PR
-```
+5. **Stochează în Peviitor** — upsert prin API-ul Peviitor (job-uri și date companie)
+6. **Generează jobs.md** — fișier markdown cu informații companie + toate job-urile curente
 
 ## API-uri folosite
 
 | API | URL | Autentificare |
 |---|---|---|
-| Omniconvert About | `https://www.omniconvert.com/about/` | Public (Astro HTML) |
+| Omniconvert (HTML) | `https://www.omniconvert.com/about/` | Public |
 | ANAF (demoanaf) | `https://demoanaf.ro/api/...` | Public |
 | Peviitor | `https://api.peviitor.ro/v1/company/` | Public |
-| SOLR (job core) | `https://solr.peviitor.ro/solr/job` | `SOLR_AUTH` |
-| SOLR (company core) | `https://solr.peviitor.ro/solr/company` | `SOLR_AUTH` |
 
 ## Robots.txt
 
-Omniconvert Careers [robots.txt](https://www.omniconvert.com/robots.txt) dezactivează:
-- `/api/*` — API-ul JSON folosit de scraper
-- `/*/vacancy/*` — paginile individuale de job
-
-Scraper-ul folosește API-ul cu rate limiting (1s delay între pagini, 10 job-uri/cerere) și un singur User-Agent identificabil. Paginile individuale de job sunt doar verificate (HEAD request), nu parse-uite.
-
-Pentru analiza completă, vezi [ROBOTS.md](../ROBOTS.md).
+Scraper-ul folosește un singur User-Agent identificabil și respectă robots.txt al site-ului. Pentru analiza completă, vezi [ai/ROBOTS.md](../ai/ROBOTS.md).
 
 ## Testare
 
@@ -71,11 +47,11 @@ npm test
 # Doar unitare
 npm run test:unit
 
-# Doar integrare (necesită ANAF live, SOLR conditional)
+# Doar integrare (necesită ANAF live, Peviitor API conditional)
 npm run test:integration
 
-# Doar E2E (API real Omniconvert + ANAF + SOLR)
+# Doar E2E (API real Omniconvert + ANAF + Peviitor)
 npm run test:e2e
 ```
 
-Testele SOLR folosesc `itIfSolr` — se auto-skip dacă variabila `SOLR_AUTH` nu e setată.
+Testele Peviitor API folosesc `itIfApi` — se auto-skip dacă API-ul Peviitor nu e disponibil.

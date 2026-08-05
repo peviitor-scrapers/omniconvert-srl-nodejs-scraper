@@ -1,123 +1,206 @@
 import { jest } from '@jest/globals';
+import * as cheerio from 'cheerio';
 
-jest.unstable_mockModule('node-fetch', () => ({
-  default: jest.fn()
-}));
-
-const MOCK_ABOUT_HTML = `<!DOCTYPE html><html><body>
-<ul class="grid max-w-[780px] grid-cols-1 gap-6 md:grid-cols-2">
-  <li>
-    <h4>Sales Account Executive</h4>
-    <a href="/jobs/sales-account-executive/">View details</a>
-  </li>
-  <li>
-    <h4>Sales Development Representative</h4>
-    <a href="/jobs/sales-development-representative/">View details</a>
-  </li>
-  <li>
-    <h4>Business Development Manager</h4>
-    <a href="/jobs/business-development-manager/">View details</a>
-  </li>
-</ul>
-</body></html>`;
-
-const MOCK_JOB_LD = {
-  '@context': 'https://schema.org',
-  '@graph': [{
-    '@type': 'JobPosting',
-    url: 'https://www.omniconvert.com/jobs/sales-account-executive/',
-    title: 'Sales Account Executive',
-    datePosted: '2019-04-30T06:22:54+00:00',
-    employmentType: 'FULL_TIME',
-    jobLocation: {
-      '@type': 'Place',
-      address: { '@type': 'PostalAddress', addressLocality: 'Bucharest' }
-    }
-  }]
-};
-
-const MOCK_JOB_PAGE_HTML = `<!DOCTYPE html><html><body>
-<script type="application/ld+json">${JSON.stringify(MOCK_JOB_LD)}</script>
-<h1>Sales Account Executive</h1>
-<p>Bucharest · Full-time / Hybrid</p>
-</body></html>`;
-
-describe('index.js', () => {
+describe('index.js Component Tests', () => {
   let index;
-  let mockFetch;
 
   beforeAll(async () => {
-    mockFetch = (await import('node-fetch')).default;
-    index = await import('../../index.js');
+    index = await import('../../scraper/index.js');
   });
 
-  beforeEach(() => {
-    mockFetch.mockReset();
-  });
+  describe('parseAboutPageJobs', () => {
+    it('should parse job links from the Omniconvert about page', () => {
+      const html = `
+        <ul>
+          <li><h4>Senior Developer</h4><a href="/jobs/senior-developer">View</a></li>
+          <li><h4>Product Manager</h4><a href="/jobs/product-manager">View</a></li>
+        </ul>
+      `;
 
-  describe('scrapeJobs', () => {
-    it('should extract job links from about page using li > a[href^="/jobs/"]', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        text: async () => MOCK_ABOUT_HTML
-      });
+      const jobs = index.parseAboutPageJobs(html);
 
-      const jobs = await index.scrapeJobs();
-
-      expect(Array.isArray(jobs)).toBe(true);
-      expect(jobs.length).toBe(3);
-      expect(jobs[0].title).toBe('Sales Account Executive');
-      expect(jobs[0].url).toMatch(/omniconvert\.com\/jobs\//);
+      expect(jobs).toHaveLength(2);
+      expect(jobs[0]).toEqual(expect.objectContaining({
+        title: 'Senior Developer',
+        url: 'https://www.omniconvert.com/jobs/senior-developer',
+        location: '',
+        workplaceType: ''
+      }));
+      expect(jobs[1].title).toBe('Product Manager');
     });
 
-    it('should fetch and parse JSON-LD from job detail pages', async () => {
-      mockFetch
-        .mockResolvedValueOnce({ ok: true, text: async () => MOCK_ABOUT_HTML })
-        .mockResolvedValueOnce({ ok: true, text: async () => MOCK_JOB_PAGE_HTML })
-        .mockResolvedValueOnce({ ok: true, text: async () => MOCK_JOB_PAGE_HTML })
-        .mockResolvedValueOnce({ ok: true, text: async () => MOCK_JOB_PAGE_HTML });
+    it('should ignore links that are not job pages', () => {
+      const html = `
+        <ul>
+          <li><h4>Team</h4><a href="/about/">About</a></li>
+          <li><h4>Senior Developer</h4><a href="/jobs/senior-developer">View</a></li>
+        </ul>
+      `;
 
-      const jobs = await index.scrapeJobs();
+      const jobs = index.parseAboutPageJobs(html);
 
-      expect(jobs.length).toBe(3);
-      expect(jobs[0].location).toBe('București');
-      expect(jobs[0].workplaceType).toBe('hybrid');
-      expect(jobs[0].postingDate).toBe('2019-04-30');
+      expect(jobs).toHaveLength(1);
+      expect(jobs[0].url).toBe('https://www.omniconvert.com/jobs/senior-developer');
+    });
+
+    it('should deduplicate jobs with the same URL', () => {
+      const html = `
+        <ul>
+          <li><h4>Senior Developer</h4><a href="/jobs/senior-developer">A</a></li>
+          <li><h4>Senior Developer</h4><a href="/jobs/senior-developer">B</a></li>
+        </ul>
+      `;
+
+      const jobs = index.parseAboutPageJobs(html);
+
+      expect(jobs).toHaveLength(1);
+    });
+
+    it('should handle empty HTML', () => {
+      const jobs = index.parseAboutPageJobs('');
+      expect(jobs).toEqual([]);
     });
   });
 
-  describe('transformJobs', () => {
-    it('should return valid job objects with required fields', () => {
-      const rawJobs = [{
-        title: 'Sales Account Executive',
-        url: 'https://www.omniconvert.com/jobs/sales-account-executive/',
+  describe('extractStructuredData', () => {
+    it('should extract JobPosting data from ld+json', () => {
+      const html = `
+        <script type="application/ld+json">
+        {
+          "@graph": [
+            {
+              "@type": "JobPosting",
+              "title": "Growth Engineer",
+              "datePosted": "2026-07-01T10:00:00Z",
+              "employmentType": "FULL_TIME",
+              "jobLocation": { "address": { "addressLocality": "Bucharest" } }
+            }
+          ]
+        }
+        </script>
+      `;
+
+      const data = index.extractStructuredData(html);
+
+      expect(data.title).toBe('Growth Engineer');
+      expect(data.location).toBe('București');
+      expect(data.workplaceType).toBe('hybrid');
+      expect(data.postingDate).toBe('2026-07-01');
+    });
+
+    it('should return empty fields when no JobPosting found', () => {
+      const data = index.extractStructuredData('<html><body>No jobs</body></html>');
+      expect(data).toEqual({ title: '', location: '', workplaceType: '', postingDate: '' });
+    });
+  });
+
+  describe('extractLocationFromText', () => {
+    it('should extract combined location and work type', () => {
+      const data = index.extractLocationFromText('Bucharest · Remote');
+      expect(data.location).toBe('București');
+      expect(data.workplaceType).toBe('remote');
+    });
+
+    it('should extract location only', () => {
+      const data = index.extractLocationFromText('Working in Cluj');
+      expect(data.location).toBe('Cluj');
+      expect(data.workplaceType).toBe('');
+    });
+
+    it('should extract work type only', () => {
+      const data = index.extractLocationFromText('Fully Remote role');
+      expect(data.location).toBe('');
+      expect(data.workplaceType).toBe('remote');
+    });
+  });
+
+  describe('transformJobsForSOLR', () => {
+    it('should keep location when it is a Romanian city', () => {
+      const payload = {
+        jobs: [
+          { url: 'https://www.omniconvert.com/jobs/1', title: 'Job 1', location: ['București'] },
+          { url: 'https://www.omniconvert.com/jobs/2', title: 'Job 2', location: ['Bucharest'] },
+          { url: 'https://www.omniconvert.com/jobs/3', title: 'Job 3', location: ['Sofia'] },
+          { url: 'https://www.omniconvert.com/jobs/4', title: 'Job 4', location: [] }
+        ]
+      };
+
+      const result = index.transformJobsForSOLR(payload);
+
+      expect(result.jobs[0].location).toEqual(['București']);
+      expect(result.jobs[1].location).toEqual(['Bucharest']);
+      expect(result.jobs[2].location).toEqual(['România']);
+      expect(result.jobs[3].location).toEqual(['România']);
+    });
+
+    it('should keep company uppercase', () => {
+      const payload = {
+        source: 'omniconvert.com',
+        company: 'omniconvert srl',
+        cif: '31411197',
+        jobs: []
+      };
+
+      const result = index.transformJobsForSOLR(payload);
+
+      expect(result.company).toBe('OMNICONVERT SRL');
+    });
+
+    it('should normalize workmode values', () => {
+      const payload = {
+        jobs: [
+          { url: 'https://www.omniconvert.com/jobs/1', title: 'Job 1', workmode: 'Remote' },
+          { url: 'https://www.omniconvert.com/jobs/2', title: 'Job 2', workmode: 'ON-SITE' },
+          { url: 'https://www.omniconvert.com/jobs/3', title: 'Job 3', workmode: 'Hybrid' },
+          { url: 'https://www.omniconvert.com/jobs/4', title: 'Job 4', workmode: 'hybrid' }
+        ]
+      };
+
+      const result = index.transformJobsForSOLR(payload);
+
+      expect(result.jobs[0].workmode).toBe('remote');
+      expect(result.jobs[1].workmode).toBe('on-site');
+      expect(result.jobs[2].workmode).toBe('hybrid');
+      expect(result.jobs[3].workmode).toBe('hybrid');
+    });
+
+    it('should handle empty jobs array', () => {
+      const result = index.transformJobsForSOLR({ jobs: [] });
+      expect(result.jobs).toEqual([]);
+    });
+  });
+
+  describe('mapToJobModel', () => {
+    it('should map raw job to job model format', () => {
+      const rawJob = {
+        url: 'https://www.omniconvert.com/jobs/growth-engineer',
+        title: 'Growth Engineer',
         location: 'București',
-        workplaceType: 'hybrid',
-        postingDate: '2019-04-30',
-      }];
+        workplaceType: 'hybrid'
+      };
 
-      const result = index.transformJobs(rawJobs);
+      const result = index.mapToJobModel(rawJob, '31411197', 'OMNICONVERT SRL');
 
-      expect(Array.isArray(result)).toBe(true);
-      expect(result.length).toBe(1);
-
-      const job = result[0];
-      expect(job).toHaveProperty('url');
-      expect(job).toHaveProperty('title');
-      expect(job).toHaveProperty('company', 'OMNICONVERT SRL');
-      expect(job).toHaveProperty('cif', '31411197');
-      expect(job).toHaveProperty('location');
-      expect(Array.isArray(job.location)).toBe(true);
-      expect(job).toHaveProperty('workmode');
-      expect(job).toHaveProperty('country', 'România');
+      expect(result.url).toBe(rawJob.url);
+      expect(result.title).toBe(rawJob.title);
+      expect(result.company).toBe('OMNICONVERT SRL');
+      expect(result.cif).toBe('31411197');
+      expect(result.location).toEqual(['București']);
+      expect(result.workmode).toBe('hybrid');
+      expect(result.status).toBe('scraped');
+      expect(result.date).toBeDefined();
     });
-  });
 
-  describe('uploadJobsToSolr', () => {
-    it('should skip upload when SOLR_AUTH not set', async () => {
-      delete process.env.SOLR_AUTH;
-      await expect(index.uploadJobsToSolr([])).resolves.not.toThrow();
-      process.env.SOLR_AUTH = 'test:test';
+    it('should remove undefined fields', () => {
+      const rawJob = {
+        url: 'https://www.omniconvert.com/jobs/1',
+        title: 'Job 1'
+      };
+
+      const result = index.mapToJobModel(rawJob, '31411197');
+
+      expect(result.location).toBeUndefined();
+      expect(result.workmode).toBeUndefined();
     });
   });
 });

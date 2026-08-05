@@ -5,27 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.1] - 2026-06-09
+## [1.5.2] - 2026-08-05
 
 ### Changed
-- Replaced API scraping with cheerio-based HTML parsing (Astro static site)
-- Rewrote extractJobsFromAboutPage for actual `<li><h4>title</h4><a>` structure
-- Extract structured data from Schema.org JSON-LD on job detail pages
-- Output saved as `{jobs: [...]}` for workflow compatibility
-- Updated docs to reflect cheerio approach
-
-### Added
-- `status: scraped` field to transformed job objects
-
-### Fixed
-- Scraper found 0 jobs due to wrong selector (used `.team-section` instead of `li h4 + a`)
-- Cheerio import in e2e tests (`cheerio.load` was undefined)
+- Aligned repository with the [EPAM nodejs template](https://github.com/sebiboga/epam-systems-international-srl-nodejs-scraper): full `scraper/` + `ai/` + `tests/` restructure, 5 GitHub Actions workflows (scrape, testing, disaster recovery, deep validation, template sync), docs under `docs/`.
+- Scraper rewritten from the legacy solr/root layout to `scraper/index.js` (cheerio-based, parses `https://www.omniconvert.com/about/`). Extracts job links, JSON-LD structured data, locations, work types and post dates; maps to the Peviitor job model and transforms for the SOLR API.
+- Company identity now lives in a single file: `scraper/config/company.json` (id `31411197`, legal `OMNICONVERT SRL`, brand `Omniconvert`, career URL `https://www.omniconvert.com/about/`).
+- ANAF validation caches to committed `tests/company.json` with 7-day refresh and graceful fallback to stale cache when ANAF/demoANAF is unavailable.
+- Tests ported to the template layout: `tests/unit`, `tests/integration`, `tests/e2e`, `tests/consistency`; `tests/validate-omniconvert-jobs.js` CLI for SOLR job validation.
 
 ## [1.0.0] - 2026-04-16
 
 ### Added
 - Initial release
-- Job scraping from Omniconvert Careers Romania API
+- Job scraping from the Omniconvert website
 - Company validation via ANAF
 - Solr integration for job storage
 - GitHub Actions workflows for daily scraping and testing

@@ -8,21 +8,24 @@ jest.unstable_mockModule('node-fetch', () => ({
 }));
 
 const COMPANY_JSON_PATH = 'tmp/company.json';
+const ROOT_COMPANY_JSON_PATH = 'company.json';
 
-function backupCompanyJson() {
-  if (fs.existsSync(COMPANY_JSON_PATH)) {
-    const content = fs.readFileSync(COMPANY_JSON_PATH, 'utf-8');
-    fs.renameSync(COMPANY_JSON_PATH, `${COMPANY_JSON_PATH}.bak`);
-    return content;
+function backupFile(path) {
+  if (fs.existsSync(path)) {
+    fs.renameSync(path, `${path}.bak`);
   }
-  return null;
 }
 
-function restoreCompanyJson() {
-  if (fs.existsSync(`${COMPANY_JSON_PATH}.bak`)) {
-    fs.renameSync(`${COMPANY_JSON_PATH}.bak`, COMPANY_JSON_PATH);
+function restoreFile(path) {
+  if (fs.existsSync(`${path}.bak`)) {
+    fs.renameSync(`${path}.bak`, path);
   }
-  return null;
+}
+
+function clearAllCaches() {
+  for (const p of [COMPANY_JSON_PATH, ROOT_COMPANY_JSON_PATH]) {
+    if (fs.existsSync(p)) fs.unlinkSync(p);
+  }
 }
 
 function anafCompanyResponse(data) {
@@ -39,10 +42,10 @@ function peviitorResponse(companies) {
   };
 }
 
-function solrResponse(numFound, docs) {
+function solrResponse(total, data) {
   return {
     ok: true,
-    json: async () => ({ response: { numFound, docs } })
+    json: async () => ({ total, data })
   };
 }
 
@@ -59,37 +62,26 @@ const OMNICONVERT_ANAF_RECORD = {
 
 describe('company.js', () => {
   let company;
-  let savedCompanyJson;
 
   beforeAll(async () => {
-    process.env.SOLR_AUTH = 'test:test';
     fs.mkdirSync("tmp", { recursive: true });
-    savedCompanyJson = backupCompanyJson();
-    company = await import('../../company.js');
+    backupFile(COMPANY_JSON_PATH);
+    backupFile(ROOT_COMPANY_JSON_PATH);
+    company = await import('../../scraper/company.js');
   });
 
   afterAll(() => {
-    delete process.env.SOLR_AUTH;
-    restoreCompanyJson();
+    restoreFile(COMPANY_JSON_PATH);
+    restoreFile(ROOT_COMPANY_JSON_PATH);
   });
 
   beforeEach(() => {
     mockFetch.mockReset();
-    if (fs.existsSync(COMPANY_JSON_PATH)) {
-      fs.unlinkSync(COMPANY_JSON_PATH);
-    }
-  });
-
-  describe('getCompanyBrand', () => {
-    it('should return the company brand', () => {
-      const brand = company.getCompanyBrand();
-      expect(typeof brand).toBe('string');
-      expect(brand).toBe('Omniconvert');
-    });
+    clearAllCaches();
   });
 
   describe('getCompanyData (no cache)', () => {
-    it('should fetch Omniconvert via direct CIF lookup and return company data', async () => {
+    it('should fetch OMNICONVERT via direct CIF lookup and return company data', async () => {
       mockFetch.mockResolvedValueOnce(anafCompanyResponse(OMNICONVERT_ANAF_RECORD));
 
       const result = await company.getCompanyData();
@@ -116,6 +108,7 @@ describe('company.js', () => {
 
   describe('getCompanyData (with cache)', () => {
     const cachedData = {
+      validatedAt: new Date().toISOString(),
       anaf: OMNICONVERT_ANAF_RECORD,
       summary: {
         company: 'OMNICONVERT SRL',
@@ -140,9 +133,7 @@ describe('company.js', () => {
 
   describe('validateAndGetCompany', () => {
     afterEach(() => {
-      if (fs.existsSync(COMPANY_JSON_PATH)) {
-        fs.unlinkSync(COMPANY_JSON_PATH);
-      }
+      clearAllCaches();
     });
 
     it('should return company data with status active', async () => {
@@ -163,7 +154,7 @@ describe('company.js', () => {
       expect(typeof result.existingJobsCount).toBe('number');
     });
 
-    // Omniconvert e activă — testul inactive se rulează doar dacă firma e inactivă
+    // OMNICONVERT e activă — testul inactive se rulează doar dacă firma e inactivă
     if (OMNICONVERT_ANAF_RECORD.inactive) {
       it('should return inactive status when company is inactive', async () => {
         const inactiveRecord = { ...OMNICONVERT_ANAF_RECORD, inactive: true };

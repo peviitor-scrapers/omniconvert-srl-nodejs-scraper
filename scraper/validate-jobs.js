@@ -1,71 +1,26 @@
 /**
- * Job URL Validator - Validates if job URLs are active or expired
- * 
- * PURPOSE: Checks if job URLs in Solr are still active or if they point to expired pages.
- * Uses OpenCode/BigPickle AI to analyze job description pages.
- * 
+ * Generic Job URL Validator (content-aware, manual use)
+ *
+ * PURPOSE: Deep validation of job URLs — fetches full page body and
+ * searches for "no longer available" / "position filled" / "expired"
+ * keywords. Slower than HEAD-only checks but catches soft-404s where
+ * the URL still returns 200 but the job is gone.
+ *
+ * SCOPE: Generic — works with ANY CIF, single URL, or list from file.
+ * Used for ad-hoc cleanup and debugging. NOT called from CI.
+ *
+ * For the fast CI-friendly OMNICONVERT-only HEAD check, see
+ * tests/validate-omniconvert-jobs.js.
+ *
  * Usage:
- *   node validate-jobs.js <CIF>                    - Query Solr and validate all jobs
- *   node validate-jobs.js --url <url>              - Check a single URL
+ *   node validate-jobs.js <CIF>                   - Query Solr and validate all jobs for a CIF
+ *   node validate-jobs.js --url <url>             - Check a single URL
  *   node validate-jobs.js --urls <url1> <url2>... - Check multiple URLs
- *   node validate-jobs.js --file <file.json>       - Check URLs from JSON file (array or {jobs: [...]})
+ *   node validate-jobs.js --file <file.json>     - Check URLs from JSON file (array or {jobs:[...]})
  */
 
-import fetch from "node-fetch";
 import fs from "fs";
-
-const TIMEOUT = 15000;
-
-const EXPIRED_KEYWORDS = [
-  "sorry, this position is no longer available",
-  "position is no longer available",
-  "job is no longer available",
-  "this vacancy is no longer available",
-  "no longer accepting applications",
-  "this position has been filled",
-  "job expired"
-];
-
-async function checkJobUrl(url) {
-  try {
-    const res = await fetch(url, {
-      timeout: TIMEOUT,
-      headers: { 
-        "User-Agent": "job_seeker_ro_spider",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,application/json,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Connection": "keep-alive",
-        "Upgrade-Insecure-Requests": "1"
-      },
-      redirect: "follow"
-    });
-    
-    const text = await res.text().catch(() => "");
-    const content = text.toLowerCase();
-    const expired = EXPIRED_KEYWORDS.some(kw => content.includes(kw));
-    const status = expired ? "expired" : "active";
-    
-    const jobTitleMatch = text.match(/<title>([^<]+)<\/title>/i);
-    const title = jobTitleMatch ? jobTitleMatch[1].trim() : null;
-    
-    return { 
-      url, 
-      status, 
-      httpStatus: res.status, 
-      title,
-      error: null 
-    };
-  } catch (err) {
-    return { 
-      url, 
-      status: "error", 
-      httpStatus: 0, 
-      title: null,
-      error: err.message 
-    };
-  }
-}
+import { validateByContent } from "./job-validator.js";
 
 async function checkUrls(urls) {
   console.log(`=== Validating ${urls.length} URLs ===\n`);
@@ -74,7 +29,7 @@ async function checkUrls(urls) {
   
   for (let i = 0; i < urls.length; i++) {
     const url = urls[i];
-    const result = await checkJobUrl(url);
+    const result = await validateByContent(url);
     
     if (result.status === "active") {
       results.active.push(result);
@@ -106,7 +61,7 @@ async function checkUrls(urls) {
 async function validateJobs(cif) {
   console.log("=== Validate Job URLs from Solr ===\n");
   
-  const { querySOLR } = await import("./solr.js");
+  const { querySOLR } = await import("./api.js");
   const result = await querySOLR(cif);
   const urls = result.docs.map(doc => doc.url);
   
@@ -135,7 +90,7 @@ async function loadUrlsFromFile(filePath) {
 }
 
 async function deleteExpiredJobs(expiredJobs) {
-  const { deleteJobByUrl } = await import("./solr.js");
+  const { deleteJobByUrl } = await import("./api.js");
   
   console.log(`\nDeleting ${expiredJobs.length} expired jobs from SOLR...`);
   
@@ -180,8 +135,8 @@ Usage:
   node validate-jobs.js --file <file.json>       - Check URLs from JSON file
 
 Examples:
-  node validate-jobs.js 31411197                 - Validate Omniconvert jobs
-  node validate-jobs.js --url "https://www.omniconvert.com/en/vacancy/123_test"
+  node validate-jobs.js 31411197                 - Validate OMNICONVERT jobs
+  node validate-jobs.js --url "https://www.omniconvert.com/jobs/123_test"
   node validate-jobs.js --urls "url1" "url2" "url3"
   node validate-jobs.js --file jobs.json
 `;
@@ -245,4 +200,4 @@ if (process.argv[1]?.includes('validate-jobs')) {
   });
 }
 
-export { checkJobUrl, checkUrls, validateJobs, loadUrlsFromFile };
+export { checkUrls, validateJobs, loadUrlsFromFile };

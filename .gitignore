@@ -37,12 +37,10 @@ temp/
 
 # Job data files (should not be committed)
 jobs.json
-jobs_omniconvert_ro.json
 jobs_existing.json
 jobs_valid.json
 company_data.json
 delete.json
-omniconvert_response.json
 
 # Credentials (NEVER commit these)
 *.pem
