@@ -7,14 +7,14 @@
 | CIF | 31411197 |
 | Brand | Omniconvert |
 | Status | activ |
-| Location | București |
+| Location | MUNICIPIUL BUCUREŞTI, SECTOR 2, STR VASILE STROESCU, NR.14, ET.1 |
 | Website | [https://www.omniconvert.com](https://www.omniconvert.com) |
 | Careers | [https://www.omniconvert.com/about/](https://www.omniconvert.com/about/) |
 | Last Scraped | 2026-08-05 |
 
 ## Current Job Listings (3)
 
-_Generated: 2026-08-05T12:20:03.241Z_
+_Generated: 2026-08-05T14:56:58.172Z_
 
 ### Sales Account Executive
 
@@ -27,12 +27,12 @@ _Generated: 2026-08-05T12:20:03.241Z_
 
 - **URL:** [https://www.omniconvert.com/jobs/sales-development-representative/](https://www.omniconvert.com/jobs/sales-development-representative/)
 - **Work Mode:** hybrid
-- **Location:** Remote
+- **Location:** România
 - **Status:** scraped
 
 ### Business Development Manager
 
 - **URL:** [https://www.omniconvert.com/jobs/business-development-manager/](https://www.omniconvert.com/jobs/business-development-manager/)
 - **Work Mode:** hybrid
-- **Location:** Remote
+- **Location:** România
 - **Status:** scraped
