@@ -7,14 +7,14 @@
 | CIF | 31411197 |
 | Brand | Omniconvert |
 | Status | activ |
-| Location | București |
+| Location | MUNICIPIUL BUCUREŞTI, SECTOR 2, STR VASILE STROESCU, NR.14, ET.1 |
 | Website | [https://www.omniconvert.com](https://www.omniconvert.com) |
 | Careers | [https://www.omniconvert.com/about/](https://www.omniconvert.com/about/) |
-| Last Scraped | 2026-08-08 |
+| Last Scraped | 2026-08-09 |
 
 ## Current Job Listings (3)
 
-_Generated: 2026-08-08T06:55:43.987Z_
+_Generated: 2026-08-09T06:58:40.427Z_
 
 ### Sales Account Executive
 
