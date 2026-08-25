@@ -10,11 +10,11 @@
 | Location | București |
 | Website | [https://www.omniconvert.com](https://www.omniconvert.com) |
 | Careers | [https://www.omniconvert.com/about/](https://www.omniconvert.com/about/) |
-| Last Scraped | 2026-08-24 |
+| Last Scraped | 2026-08-25 |
 
 ## Current Job Listings (3)
 
-_Generated: 2026-08-24T07:00:45.372Z_
+_Generated: 2026-08-25T06:51:13.650Z_
 
 ### Sales Account Executive
 
