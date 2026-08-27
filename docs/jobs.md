@@ -10,11 +10,11 @@
 | Location | MUNICIPIUL BUCUREŞTI, SECTOR 2, STR VASILE STROESCU, NR.14, ET.1 |
 | Website | [https://www.omniconvert.com](https://www.omniconvert.com) |
 | Careers | [https://www.omniconvert.com/about/](https://www.omniconvert.com/about/) |
-| Last Scraped | 2026-08-26 |
+| Last Scraped | 2026-08-27 |
 
 ## Current Job Listings (3)
 
-_Generated: 2026-08-26T06:52:14.676Z_
+_Generated: 2026-08-27T17:25:13.848Z_
 
 ### Sales Account Executive
 
