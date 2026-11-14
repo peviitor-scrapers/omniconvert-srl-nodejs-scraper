@@ -14,7 +14,7 @@
 
 ## Current Job Listings (3)
 
-_Generated: 2026-11-14T13:07:17.602Z_
+_Generated: 2026-11-14T15:05:10.025Z_
 
 ### Sales Account Executive
 
